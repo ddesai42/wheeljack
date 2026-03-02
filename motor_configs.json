@@ -1,0 +1,78 @@
+{
+  "motor_0_up": [
+    {"motor_id": "Motor_0", "pattern": 8,  "reverse": false, "voltage": 24.0, "current": 0.7, "runtime": 3.0},
+    {"motor_id": "Motor_0", "pattern": 8,  "reverse": false, "voltage": 24.0, "current": 1.2, "runtime": 1.0},
+    {"motor_id": "Motor_0", "pattern": 8,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0},
+    {"motor_id": "Motor_0", "pattern": 8,  "reverse": false, "voltage": 24.0, "current": 2.0, "runtime": 1.0}
+  ],
+  "motor_0_bump": [
+    {"motor_id": "Motor_0", "pattern": 8,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0}
+  ],
+  "motor_0_down": [
+    {"motor_id": "Motor_0", "pattern": 8,  "reverse": true,  "voltage": 24.0, "current": 1.4, "runtime": 3.0}
+  ],
+
+  "motor_1_up": [
+    {"motor_id": "Motor_1", "pattern": 4,  "reverse": false, "voltage": 24.0, "current": 0.7, "runtime": 3.0},
+    {"motor_id": "Motor_1", "pattern": 4,  "reverse": false, "voltage": 24.0, "current": 1.2, "runtime": 1.0},
+    {"motor_id": "Motor_1", "pattern": 4,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0},
+    {"motor_id": "Motor_1", "pattern": 4,  "reverse": false, "voltage": 24.0, "current": 2.0, "runtime": 1.0}
+  ],
+  "motor_1_bump": [
+    {"motor_id": "Motor_1", "pattern": 4,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0}
+  ],
+  "motor_1_down": [
+    {"motor_id": "Motor_1", "pattern": 4,  "reverse": true,  "voltage": 24.0, "current": 1.4, "runtime": 3.0}
+  ],
+
+  "motor_2_up": [
+    {"motor_id": "Motor_2", "pattern": 2,  "reverse": false, "voltage": 24.0, "current": 0.7, "runtime": 3.0},
+    {"motor_id": "Motor_2", "pattern": 2,  "reverse": false, "voltage": 24.0, "current": 1.2, "runtime": 1.0},
+    {"motor_id": "Motor_2", "pattern": 2,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0},
+    {"motor_id": "Motor_2", "pattern": 2,  "reverse": false, "voltage": 24.0, "current": 2.0, "runtime": 1.0}
+  ],
+  "motor_2_bump": [
+    {"motor_id": "Motor_2", "pattern": 2,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0}
+  ],
+  "motor_2_down": [
+    {"motor_id": "Motor_2", "pattern": 2,  "reverse": true,  "voltage": 24.0, "current": 1.4, "runtime": 3.0}
+  ],
+
+  "motor_3_up": [
+    {"motor_id": "Motor_3", "pattern": 1,  "reverse": false, "voltage": 24.0, "current": 0.7, "runtime": 3.0},
+    {"motor_id": "Motor_3", "pattern": 1,  "reverse": false, "voltage": 24.0, "current": 1.2, "runtime": 1.0},
+    {"motor_id": "Motor_3", "pattern": 1,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0},
+    {"motor_id": "Motor_3", "pattern": 1,  "reverse": false, "voltage": 24.0, "current": 2.0, "runtime": 1.0}
+  ],
+  "motor_3_bump": [
+    {"motor_id": "Motor_3", "pattern": 1,  "reverse": false, "voltage": 24.0, "current": 1.4, "runtime": 1.0}
+  ],
+  "motor_3_down": [
+    {"motor_id": "Motor_3", "pattern": 1,  "reverse": true,  "voltage": 24.0, "current": 1.4, "runtime": 3.0}
+  ],
+
+  "all_motors_down": [
+    {"motor_id": "ALL", "pattern": 15, "reverse": true,  "voltage": 24.0, "current": 2.0, "runtime": 3.0}
+  ],
+  "stop_all_motors": [
+    {"motor_id": "ALL", "pattern": 0,  "reverse": false, "voltage": 0.0,  "current": 0.0, "runtime": 1.0}
+  ],
+
+  "multi_motor_sequence": {
+    "description": "Interleaved current ramp across all motors (rows indexed from each motor_X_up config)",
+    "steps": [
+      {"config": "motor_0_up", "row": 0},
+      {"config": "motor_1_up", "row": 0},
+      {"config": "motor_2_up", "row": 0},
+      {"config": "motor_3_up", "row": 0},
+      {"config": "motor_0_up", "row": 1},
+      {"config": "motor_1_up", "row": 1},
+      {"config": "motor_2_up", "row": 1},
+      {"config": "motor_3_up", "row": 1},
+      {"config": "motor_0_up", "row": 2},
+      {"config": "motor_1_up", "row": 2},
+      {"config": "motor_2_up", "row": 2},
+      {"config": "motor_3_up", "row": 2}
+    ]
+  }
+}
