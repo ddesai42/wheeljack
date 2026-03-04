@@ -12,6 +12,7 @@
 #include <bitset>
 #include <string>
 #include <array>
+#include <limits>
 #include "motor_controller.h"
 #include "rigol_controller.h"
 
@@ -40,6 +41,7 @@ auto test_mode_ui() -> TestModeConfig {
 
     auto selection = int{};
     std::cin >> selection;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     switch (selection) {
         case 1:
@@ -84,7 +86,7 @@ auto test_mode_ui() -> TestModeConfig {
 auto comport_ui() -> std::string {
     auto port = std::string{};
     std::cout << "Enter COM port (e.g., COM6 or just 6): ";
-    std::cin >> port;
+    std::getline(std::cin, port);
     return port;
 }
 
