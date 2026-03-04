@@ -1,4 +1,7 @@
-// motor_controller.h - Header file with class declarations and std::bitset
+// <Filename>: <motor_controller.h>
+// <Authors>:  <DANIEL DESAI, NOAH VAWTER>
+// <Updated>:  <2026-03-04>
+// <Version>:  <0.0.2>
 
 #ifndef MOTOR_CONTROLLER_H
 #define MOTOR_CONTROLLER_H
@@ -17,59 +20,57 @@ private:
 public:
     NumatoRelayController(const std::string& port, bool test = false);
     ~NumatoRelayController();
-    
-    bool isTestMode() const;
-    bool openPort();
+
+    auto isTestMode() const -> bool;
+    auto openPort()         -> bool;
     void closePort();
-    bool sendCommand(const std::string& cmd, bool readResponse = false, bool silent = false);
-    bool relayOn(int relayNum, bool silent = false);
-    bool relayOff(int relayNum, bool silent = false);
-    bool allOff();
+    auto sendCommand(const std::string& cmd, bool readResponse = false, bool silent = false) -> bool;
+    auto relayOn(int relayNum, bool silent = false)  -> bool;
+    auto relayOff(int relayNum, bool silent = false) -> bool;
+    auto allOff()      -> bool;
+    auto getVersion()  -> bool;
     void showStatus();
-    bool getVersion();
 };
 
 class MotorController {
 private:
     NumatoRelayController& relay;
-    
+
     enum MotorState {
         MOTOR_STOPPED,
         MOTOR_FORWARD,
         MOTOR_REVERSE
     };
-    
+
     MotorState motorStates[4];
-    int getMotorBase(int motorNum);
 
 public:
+    auto getMotorBase(int motorNum) -> int;   // public: used in runMotorController(bitset...)
+
     MotorController(NumatoRelayController& r);
-    
-    bool motorStop(int motorNum);
-    bool motorForward(int motorNum, bool checkSafety = true);
-    bool motorReverse(int motorNum, bool checkSafety = true);
-    bool motorBrake(int motorNum);
+
+    auto motorStop(int motorNum)                             -> bool;
+    auto motorForward(int motorNum, bool checkSafety = true) -> bool;
+    auto motorReverse(int motorNum, bool checkSafety = true) -> bool;
+    auto motorBrake(int motorNum)                            -> bool;
     void stopAll();
     void showMotorStatus();
     void explainWiring();
 };
 
-// Main interactive function - call this from your program
-// testMode: true = test mode (default), false = operating mode
-void runMotorController(bool testMode = true);
+// Main interactive function
+// testMode: true = simulated (default), false = hardware
+// comPort:  COM port to use in hardware mode (default "COM6")
+void runMotorController(bool testMode = true, const std::string& comPort = "COM6");
 
 // Automated motor control function using std::bitset
-// pattern: 4-bit bitset representing motor states (e.g., std::bitset<4>("1010"))
-//   Bit 3 (leftmost) = motor 0, Bit 2 = motor 1, Bit 1 = motor 2, Bit 0 (rightmost) = motor 3
-//   1 = motor runs, 0 = motor stopped
-//   Example: std::bitset<4>("1010") = motor 0 runs, motor 1 stopped, motor 2 runs, motor 3 stopped
-//   Example: std::bitset<4>("1111") = all motors run
-//   Example: std::bitset<4>(0b1010) = binary literal notation
-// isReverse: true = all motors run in reverse, false = all motors run forward (default)
-// testMode: true = test mode (default), false = operating mode
-// timeout: number of seconds EACH motor runs (0 = manual stop, default = 0)
-//   Note: Each motor runs sequentially for 'timeout' seconds, then stops before the next starts
-// delay: delay in milliseconds between each motor activation (default = 0)
-void runMotorController(const std::bitset<4>& pattern, bool isReverse = false, bool testMode = true, int timeout = 0, int delay = 0);
+// pattern:  4-bit bitset — bit 3 = Motor 0, bit 2 = Motor 1, bit 1 = Motor 2, bit 0 = Motor 3
+//           1 = motor runs, 0 = motor stopped
+// isReverse: true = reverse, false = forward (default)
+// testMode:  true = simulated (default), false = hardware
+// comPort:   COM port to use in hardware mode (default "COM6")
+// timeout:   seconds each motor runs sequentially (0 = manual stop, default)
+// delay:     milliseconds between motor activations (default = 0)
+void runMotorController(const std::bitset<4>& pattern, bool isReverse = false, bool testMode = true, const std::string& comPort = "COM6", int timeout = 0, int delay = 0);
 
 #endif // MOTOR_CONTROLLER_H
