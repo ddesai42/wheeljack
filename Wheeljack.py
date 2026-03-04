@@ -1,5 +1,8 @@
-# python_motor_controller.py
-# Streamlit UI for motor controller with test mode configurations
+# <Filename>: <Wheeljack.py>
+# <Author>:   <DANIEL DESAI>
+# <Updated>:  <2026-03-04>
+# <Version>:  <0.0.2>
+
 
 import subprocess
 import os
@@ -8,7 +11,7 @@ import json
 import time
 import pandas as pd
 import streamlit as st
-import Wheeljack_metadata as wheeljack_metadata
+# import Wheeljack_metadata as wheeljack_metadata
 from enum import Enum
 from vpic import Client
 
@@ -23,9 +26,10 @@ class Mode(Enum):
 
 
 class MotorController:
-    def __init__(self, executable='wheeljack.exe', test_mode=Mode.NORMAL):
-        self.executable = executable
-        self.test_mode = test_mode
+    def __init__(self, executable='wheeljack.exe', test_mode=Mode.NORMAL, com_port='COM6'):
+        self.executable  = executable
+        self.test_mode   = test_mode
+        self.com_port    = com_port   # only sent to exe when not in full test mode
 
         if not os.path.exists(self.executable):
             raise FileNotFoundError(f'Executable not found: {self.executable}')
@@ -37,10 +41,10 @@ class MotorController:
 
     def _get_test_mode_description(self):
         descriptions = {
-            Mode.NORMAL: 'Normal mode (both devices required)',
-            Mode.POWER_SUPPLY_TEST: 'Power supply test (no Rigol required)',
+            Mode.NORMAL:             'Normal mode (both devices required)',
+            Mode.POWER_SUPPLY_TEST:  'Power supply test (no Rigol required)',
             Mode.MOTOR_CONTROL_TEST: 'Motor control test (no relay board required)',
-            Mode.FULL_TEST: 'Full test mode (no hardware required)'
+            Mode.FULL_TEST:          'Full test mode (no hardware required)'
         }
         return descriptions.get(self.test_mode, 'Unknown mode')
 
@@ -55,7 +59,31 @@ class MotorController:
             pattern_str = pattern
 
         direction_char = 'r' if reverse else 'f'
-        input_data = f'{self.test_mode.value}\n{pattern_str}\n{direction_char}\n{voltage}\n{current}\n{runtime}\n'
+
+        # Modes 1 (NORMAL) and 2 (POWER_SUPPLY_TEST) use the real relay board
+        # and need a COM port. Modes 3 and 4 simulate the relay board so no
+        # COM port prompt is issued by wheeljack.exe.
+        needs_com_port = self.test_mode in (Mode.NORMAL, Mode.POWER_SUPPLY_TEST)
+
+        if needs_com_port:
+            input_data = (
+                f'{self.test_mode.value}\n'
+                f'{self.com_port}\n'
+                f'{pattern_str}\n'
+                f'{direction_char}\n'
+                f'{voltage}\n'
+                f'{current}\n'
+                f'{runtime}\n'
+            )
+        else:
+            input_data = (
+                f'{self.test_mode.value}\n'
+                f'{pattern_str}\n'
+                f'{direction_char}\n'
+                f'{voltage}\n'
+                f'{current}\n'
+                f'{runtime}\n'
+            )
 
         try:
             process = subprocess.Popen(
@@ -126,8 +154,8 @@ class MotorController:
                 break
 
             motor_id = row['motor_id']
-            pattern = row['pattern']
-            reverse = row.get('reverse', False)
+            pattern  = row['pattern']
+            reverse  = row.get('reverse', False)
 
             return_code, voltage, current, power = self.run_motor(
                 pattern=pattern,
@@ -138,17 +166,17 @@ class MotorController:
             )
 
             results.append({
-                'motor_id': motor_id,
-                'config_num': k+1,
-                'pattern': str(pattern),
-                'reverse': reverse,
-                'voltage': float(row['voltage']),
-                'current': float(row['current']),
-                'runtime': float(row['runtime']),
+                'motor_id':        motor_id,
+                'config_num':      k + 1,
+                'pattern':         str(pattern),
+                'reverse':         reverse,
+                'voltage':         float(row['voltage']),
+                'current':         float(row['current']),
+                'runtime':         float(row['runtime']),
                 'measured_voltage': voltage,
                 'measured_current': current,
-                'measured_power': power,
-                'success': return_code == 0
+                'measured_power':   power,
+                'success':          return_code == 0
             })
 
             col_idx = motor_col_map.get(motor_id, 0)
@@ -172,10 +200,10 @@ class MotorController:
 def lookup_vin(vin):
     v = Client()
     vehicle = v.decode_vin(vin)
-    y = str(vehicle['ModelYear'])
-    mk = str(vehicle['Make']).upper()
+    y   = str(vehicle['ModelYear'])
+    mk  = str(vehicle['Make']).upper()
     mod = str(vehicle['Model']).upper()
-    t = str(vehicle['Trim']).upper() if vehicle['Trim'] != 'Unknown' else ''
+    t   = str(vehicle['Trim']).upper() if vehicle['Trim'] != 'Unknown' else ''
     return ' '.join([y, mk, mod, t])
 
 
@@ -183,7 +211,6 @@ def lookup_vin(vin):
 
 @st.cache_data
 def load_motor_configs(config_path='motor_configs.json'):
-    """Load motor configurations from a JSON file and return as DataFrames."""
     if not os.path.exists(config_path):
         st.error(f'Motor config file not found: {config_path}')
         st.stop()
@@ -193,7 +220,6 @@ def load_motor_configs(config_path='motor_configs.json'):
 
     configs = {}
 
-    # Load all simple configs (lists of row dicts) as DataFrames
     simple_keys = [
         'motor_0_up', 'motor_0_bump', 'motor_0_down',
         'motor_1_up', 'motor_1_bump', 'motor_1_down',
@@ -204,7 +230,6 @@ def load_motor_configs(config_path='motor_configs.json'):
     for key in simple_keys:
         configs[key] = pd.DataFrame(raw[key])
 
-    # Build multi_motor_sequence from its step references
     seq_steps = raw['multi_motor_sequence']['steps']
     frames = [
         configs[step['config']].iloc[[step['row']]]
@@ -219,21 +244,21 @@ def load_motor_configs(config_path='motor_configs.json'):
 
 cfg = load_motor_configs('motor_configs.json')
 
-motor_0_up            = cfg['motor_0_up']
-motor_0_bump          = cfg['motor_0_bump']
-motor_0_down          = cfg['motor_0_down']
-motor_1_up            = cfg['motor_1_up']
-motor_1_bump          = cfg['motor_1_bump']
-motor_1_down          = cfg['motor_1_down']
-motor_2_up            = cfg['motor_2_up']
-motor_2_bump          = cfg['motor_2_bump']
-motor_2_down          = cfg['motor_2_down']
-motor_3_up            = cfg['motor_3_up']
-motor_3_bump          = cfg['motor_3_bump']
-motor_3_down          = cfg['motor_3_down']
-all_motors_down       = cfg['all_motors_down']
-stop_all_motors       = cfg['stop_all_motors']
-multi_motor_sequence  = cfg['multi_motor_sequence']
+motor_0_up           = cfg['motor_0_up']
+motor_0_bump         = cfg['motor_0_bump']
+motor_0_down         = cfg['motor_0_down']
+motor_1_up           = cfg['motor_1_up']
+motor_1_bump         = cfg['motor_1_bump']
+motor_1_down         = cfg['motor_1_down']
+motor_2_up           = cfg['motor_2_up']
+motor_2_bump         = cfg['motor_2_bump']
+motor_2_down         = cfg['motor_2_down']
+motor_3_up           = cfg['motor_3_up']
+motor_3_bump         = cfg['motor_3_bump']
+motor_3_down         = cfg['motor_3_down']
+all_motors_down      = cfg['all_motors_down']
+stop_all_motors      = cfg['stop_all_motors']
+multi_motor_sequence = cfg['multi_motor_sequence']
 
 
 # ----- STREAMLIT UI
@@ -245,26 +270,23 @@ try:
 except:
     pass
 
-if 'motor_configs' not in st.session_state:
-    st.session_state.motor_configs = None
-if 'results' not in st.session_state:
-    st.session_state.results = None
-if 'stop_requested' not in st.session_state:
-    st.session_state.stop_requested = False
+if 'motor_configs'  not in st.session_state: st.session_state.motor_configs  = None
+if 'results'        not in st.session_state: st.session_state.results        = None
+if 'stop_requested' not in st.session_state: st.session_state.stop_requested = False
 
-tab1, tab2, tab3, tab4 = st.tabs(['INTAKE', 'LIFT', 'SECURE', 'METADATA'])
+tab1, tab2, tab3 = st.tabs(['INTAKE', 'LIFT', 'SECURE'])
 
 with tab1:
     with st.form(key='form_0'):
         col11, col12, col13, col14 = st.columns(4)
         with col11:
-            st.session_state.car = st.text_input('Car number')
+            st.session_state.car = st.text_input('Car number', value='0')
         with col12:
-            st.session_state.vin = st.text_input('VIN')
+            st.session_state.vin = st.text_input('VIN', value='00000000000000000')
         with col13:
-            st.session_state.tire_code = st.text_input('Tire code')
+            st.session_state.tire_code = st.text_input('Tire code', value='235/40R18')
         with col14:
-            st.session_state.rim_width = st.number_input('Rim width')
+            st.session_state.rim_width = st.text_input('Rim width', value='8.0')
             submitted_0 = st.form_submit_button(label='START', type='primary', width='stretch')
         if submitted_0:
             st.info(lookup_vin(st.session_state.vin))
@@ -277,17 +299,21 @@ with tab3:
 
     test_mode_options = {
         1: 'Normal mode (both devices required)',
-        2: 'Test power supply only (no Rigol required)',
-        3: 'Test motor control only (no relay board required)',
+        2: 'Test power supply / run motors (no Rigol required)',
+        3: 'Test motor control / energize Rigol (no relay board required)',
         4: 'Full test (no hardware required)'
     }
 
-    selected_mode = st.selectbox(
-        'Select Operating Mode:',
-        options=list(test_mode_options.keys()),
-        format_func=lambda x: test_mode_options[x],
-        index=3
-    )
+    col_mode, col_port = st.columns([3, 1])
+    with col_mode:
+        selected_mode = st.selectbox(
+            'Select Operating Mode:',
+            options=list(test_mode_options.keys()),
+            format_func=lambda x: test_mode_options[x],
+            index=3
+        )
+    with col_port:
+        com_port = st.text_input('COM Port', value='COM6')
 
     MODE = Mode(selected_mode)
 
@@ -295,71 +321,55 @@ with tab3:
 
     with col1:
         st.write(':blue[Motor 0]')
-        if st.button('BUMP', icon=':material/expand_circle_up:', key='motor_0_bump', use_container_width=True):
-            st.session_state.motor_configs = motor_0_bump
-            st.session_state.run_sequence = True
-        if st.button('UP', icon=':material/arrow_circle_up:', key='motor_0_up', use_container_width=True):
-            st.session_state.motor_configs = motor_0_up
-            st.session_state.run_sequence = True
-        if st.button('DOWN', icon=':material/arrow_circle_down:', key='motor_0_down', use_container_width=True):
-            st.session_state.motor_configs = motor_0_down
-            st.session_state.run_sequence = True
+        if st.button('BUMP', icon=':material/expand_circle_up:',   key='motor_0_bump', use_container_width=True):
+            st.session_state.motor_configs = motor_0_bump;  st.session_state.run_sequence = True
+        if st.button('UP',   icon=':material/arrow_circle_up:',    key='motor_0_up',   use_container_width=True):
+            st.session_state.motor_configs = motor_0_up;    st.session_state.run_sequence = True
+        if st.button('DOWN', icon=':material/arrow_circle_down:',  key='motor_0_down', use_container_width=True):
+            st.session_state.motor_configs = motor_0_down;  st.session_state.run_sequence = True
 
     with col2:
         st.write(':blue[Motor 1]')
-        if st.button('BUMP', icon=':material/expand_circle_up:', key='motor_1_bump', use_container_width=True):
-            st.session_state.motor_configs = motor_1_bump
-            st.session_state.run_sequence = True
-        if st.button('UP', icon=':material/arrow_circle_up:', key='motor_1_up', use_container_width=True):
-            st.session_state.motor_configs = motor_1_up
-            st.session_state.run_sequence = True
-        if st.button('DOWN', icon=':material/arrow_circle_down:', key='motor_1_down', use_container_width=True):
-            st.session_state.motor_configs = motor_1_down
-            st.session_state.run_sequence = True
+        if st.button('BUMP', icon=':material/expand_circle_up:',   key='motor_1_bump', use_container_width=True):
+            st.session_state.motor_configs = motor_1_bump;  st.session_state.run_sequence = True
+        if st.button('UP',   icon=':material/arrow_circle_up:',    key='motor_1_up',   use_container_width=True):
+            st.session_state.motor_configs = motor_1_up;    st.session_state.run_sequence = True
+        if st.button('DOWN', icon=':material/arrow_circle_down:',  key='motor_1_down', use_container_width=True):
+            st.session_state.motor_configs = motor_1_down;  st.session_state.run_sequence = True
 
     with col3:
         st.write(':blue[Motor 2]')
-        if st.button('BUMP', icon=':material/expand_circle_up:', key='motor_2_bump', use_container_width=True):
-            st.session_state.motor_configs = motor_2_bump
-            st.session_state.run_sequence = True
-        if st.button('UP', icon=':material/arrow_circle_up:', key='motor_2_up', use_container_width=True):
-            st.session_state.motor_configs = motor_2_up
-            st.session_state.run_sequence = True
-        if st.button('DOWN', icon=':material/arrow_circle_down:', key='motor_2_down', use_container_width=True):
-            st.session_state.motor_configs = motor_2_down
-            st.session_state.run_sequence = True
+        if st.button('BUMP', icon=':material/expand_circle_up:',   key='motor_2_bump', use_container_width=True):
+            st.session_state.motor_configs = motor_2_bump;  st.session_state.run_sequence = True
+        if st.button('UP',   icon=':material/arrow_circle_up:',    key='motor_2_up',   use_container_width=True):
+            st.session_state.motor_configs = motor_2_up;    st.session_state.run_sequence = True
+        if st.button('DOWN', icon=':material/arrow_circle_down:',  key='motor_2_down', use_container_width=True):
+            st.session_state.motor_configs = motor_2_down;  st.session_state.run_sequence = True
 
     with col4:
         st.write(':blue[Motor 3]')
-        if st.button('BUMP', icon=':material/expand_circle_up:', key='motor_3_bump', use_container_width=True):
-            st.session_state.motor_configs = motor_3_bump
-            st.session_state.run_sequence = True
-        if st.button('UP', icon=':material/arrow_circle_up:', key='motor_3_up', use_container_width=True):
-            st.session_state.motor_configs = motor_3_up
-            st.session_state.run_sequence = True
-        if st.button('DOWN', icon=':material/arrow_circle_down:', key='motor_3_down', use_container_width=True):
-            st.session_state.motor_configs = motor_3_down
-            st.session_state.run_sequence = True
+        if st.button('BUMP', icon=':material/expand_circle_up:',   key='motor_3_bump', use_container_width=True):
+            st.session_state.motor_configs = motor_3_bump;  st.session_state.run_sequence = True
+        if st.button('UP',   icon=':material/arrow_circle_up:',    key='motor_3_up',   use_container_width=True):
+            st.session_state.motor_configs = motor_3_up;    st.session_state.run_sequence = True
+        if st.button('DOWN', icon=':material/arrow_circle_down:',  key='motor_3_down', use_container_width=True):
+            st.session_state.motor_configs = motor_3_down;  st.session_state.run_sequence = True
 
-    st.write("---")
+    st.write('---')
 
     col_empty1, col5, col6, col7 = st.columns(4)
 
     with col5:
-        if st.button('MULTI-MOTOR', icon=':material/cycle:', key='multi_motor', use_container_width=True):
-            st.session_state.motor_configs = multi_motor_sequence
-            st.session_state.run_sequence = True
-
+        if st.button('MULTI-MOTOR', icon=':material/cycle:',        key='multi_motor', use_container_width=True):
+            st.session_state.motor_configs = multi_motor_sequence;  st.session_state.run_sequence = True
     with col6:
-        if st.button('ALL DOWN', icon=':material/arrow_circle_down:', key='all_down', use_container_width=True):
-            st.session_state.motor_configs = all_motors_down
-            st.session_state.run_sequence = True
-
+        if st.button('ALL DOWN',    icon=':material/arrow_circle_down:', key='all_down', use_container_width=True):
+            st.session_state.motor_configs = all_motors_down;       st.session_state.run_sequence = True
     with col7:
-        if st.button('STOP ALL', icon=':material/dangerous:', key='stop_all', use_container_width=True):
+        if st.button('STOP ALL',    icon=':material/dangerous:',    key='stop_all',    use_container_width=True):
             st.session_state.stop_requested = True
-            st.session_state.motor_configs = stop_all_motors
-            st.session_state.run_sequence = True
+            st.session_state.motor_configs  = stop_all_motors
+            st.session_state.run_sequence   = True
 
     if 'run_sequence' in st.session_state and st.session_state.run_sequence:
         st.session_state.run_sequence = False
@@ -378,7 +388,7 @@ with tab3:
                     with status_col1:
                         st.badge('Initializing', color='blue')
 
-                controller = MotorController(executable='wheeljack.exe', test_mode=MODE)
+                controller = MotorController(executable='wheeljack.exe', test_mode=MODE, com_port=com_port)
 
                 if not is_stop_command:
                     with status_col2:
@@ -397,10 +407,3 @@ with tab3:
                 st.info('Please ensure "wheeljack.exe" is in the current directory.')
             except Exception as e:
                 st.error(f'Error during execution: {e}')
-
-with tab4:
-    try:
-        metadata = wheeljack_metadata.play()
-        st.dataframe(metadata, use_container_width=True)
-    except Exception as e:
-        st.error(e)
