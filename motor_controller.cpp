@@ -175,8 +175,15 @@ auto NumatoRelayController::relayOn(int relayNum, bool silent) -> bool {
     if (!silent)
         std::cout << (testMode ? "[TEST] " : "") << "Turning ON relay " << relayNum << std::endl;
 
+    // Numato USBRELAY16 firmware A0M09.01 format:
+    // Relays 0-9:  single decimal digit  ("relay on 0" .. "relay on 9")
+    // Relays 10-15: single uppercase hex  ("relay on A" .. "relay on F")
+    auto boardRelay = relayNum;
     auto ss = std::ostringstream{};
-    ss << "relay on " << std::setw(2) << std::setfill('0') << relayNum;
+    if (boardRelay < 10)
+        ss << "relay on " << boardRelay;
+    else
+        ss << "relay on " << static_cast<char>('A' + (boardRelay - 10));
     auto success = sendCommand(ss.str(), false, silent);
     if (success) relayStates[relayNum] = true;
     return success;
@@ -190,8 +197,12 @@ auto NumatoRelayController::relayOff(int relayNum, bool silent) -> bool {
     if (!silent)
         std::cout << (testMode ? "[TEST] " : "") << "Turning OFF relay " << relayNum << std::endl;
 
+    auto boardRelay = relayNum;
     auto ss = std::ostringstream{};
-    ss << "relay off " << std::setw(2) << std::setfill('0') << relayNum;
+    if (boardRelay < 10)
+        ss << "relay off " << boardRelay;
+    else
+        ss << "relay off " << static_cast<char>('A' + (boardRelay - 10));
     auto success = sendCommand(ss.str(), false, silent);
     if (success) relayStates[relayNum] = false;
     return success;
@@ -253,14 +264,16 @@ auto MotorController::motorStop(int motorNum) -> bool {
     std::cout << "\n--- STOPPING Motor " << motorNum << " ---" << std::endl;
 
     // Step 1: Power supply disabled by caller before motorStop() is called.
-    // Step 2: Disable enable relay only — direction relays are left as-is.
-    Sleep(100);   // ensure power supply has settled off before opening enable relay
-    relay.relayOff(base, false);
+    // Step 2: Disable enable relay, then direction relays.
+    Sleep(100);   // ensure power supply has settled off before opening relays
+    relay.relayOff(base,     false);
+    relay.relayOff(base + 1, false);
+    relay.relayOff(base + 2, false);
 
     motorStates[motorNum] = MOTOR_STOPPED;
 
     std::cout << "Motor " << motorNum << " stopped" << std::endl;
-    std::cout << "  Enable relay R" << base << " = OFF (direction relays unchanged)" << std::endl;
+    std::cout << "  Relays R" << base << ", R" << (base+1) << ", R" << (base+2) << " = OFF" << std::endl;
     return true;
 }
 
